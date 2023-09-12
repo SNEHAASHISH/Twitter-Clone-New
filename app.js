@@ -1,9 +1,12 @@
 const express = require('express');
 const path = require('path');
 const bodyParser = require('body-parser');
+const session = require('express-session');
+
 const mongoose = require('./database');
-const app = express();
 const middleware = require('./middleware');
+
+const app = express();
 const port = 3003;
 
 const server = app.listen(port, () => {
@@ -15,6 +18,11 @@ app.set('views','views');
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, "public")));
+app.use(session({
+    secret: 'vkhew nkavjcn',
+    resave: true,
+    saveUninitialized: false
+}));
 
 //Routes
 const loginRoute = require('./routes/loginRoutes');
