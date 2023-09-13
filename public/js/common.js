@@ -1,8 +1,10 @@
-$("#postTextarea").keyup((event) => {
+$("#postTextarea, #replyTextarea").keyup((event) => {
     var textbox = $(event.target);
     var value = textbox.val().trim();
     
-    var submitButton = $("#submitPostButton");
+    var isModal = textbox.parents(".modal").length == 1;
+
+    var submitButton = isModal ? $("#submitReplyButton") : $("#submitPostButton");
 
     if (submitButton.length == 0) {
         return alert("No submit button found");
@@ -30,6 +32,15 @@ $("#submitPostButton").click((event) => {
         $(".postsContainer").prepend(html);
         textbox.val("");
         button.prop("disabled", true);
+    })
+})
+
+$("#replyModal").on("show.bs.modal", (event) => {
+    //console.log("hi");
+    var button = $(event.relatedTarget);
+    var postId = getPostIDFromElement(button);
+    $.get("/api/posts/" + postId, (results) => {
+        outputPosts(results, $("#originalPostContainer"));
     })
 })
 
@@ -98,7 +109,7 @@ function createPostHTML(postData) {
     var isRetweet = postData.retweetData !== undefined;
     var retweetedBy = isRetweet ? postData.postedBy.username : null;
     postData = isRetweet ? postData.retweetData : postData;
-    console.log(isRetweet);
+    //console.log(isRetweet);
 
     var postedBy = postData.postedBy;
 
@@ -138,7 +149,7 @@ function createPostHTML(postData) {
                         </div>
                         <div class="postFooter">
                             <div class='postButtonContainer'>
-                                <button>
+                                <button data-toggle='modal' data-target='#replyModal'>
                                     <i class='far fa-comment'></i>
                                 </button>
                             </div>
@@ -193,5 +204,22 @@ function timeDifference(current, previous) {
 
     else {
         return Math.round(elapsed/msPerYear ) + ' years ago';   
+    }
+}
+
+function outputPosts(results, container) {
+    container.html("");
+
+    if (!Array.isArray(results)) {
+        results = [results];
+    }
+
+    results.forEach(result => {
+        var html = createPostHTML(result)
+        container.append(html);
+    });
+
+    if (results.length == 0) {
+        container.append("<span class='noResults'>Nothing to show</span>");
     }
 }
