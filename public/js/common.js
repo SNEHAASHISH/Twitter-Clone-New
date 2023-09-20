@@ -54,12 +54,37 @@ $("#replyModal").on("show.bs.modal", (event) => {
     var postId = getPostIDFromElement(button);
     $("#submitReplyButton").data("id",postId);
     $.get("/api/posts/" + postId, (results) => {
-        outputPosts(results, $("#originalPostContainer"));
+        outputPosts(results.postData, $("#originalPostContainer"));
     })
 })
 
-$("#replyModal").on("hide.bs.modal", () => {
+$("#replyModal").on("hidden.bs.modal", () => {
     $("#originalPostContainer").html("")
+})
+
+$("#deletePostModal").on("show.bs.modal", (event) => {
+    var button = $(event.relatedTarget);
+    var postId = getPostIDFromElement(button);
+    $("#deletePostButton").data("id",postId);
+    //console.log($("#deletePostButton").data().id)
+
+})
+
+$("deletePostButton").click((event) => {
+    var id = $(event.target).data("id");
+
+    $.ajax({
+        url: `/api/posts/${id}`,
+        type: "DELETE",
+        success: (data, status, xhr) => {
+            if (xhr.status === 202) {
+                location.reload();
+            } else {
+                alert("Could Not Delete Post");
+            }
+            
+        }
+    })
 })
 
 $(document).on("click",".likeButton", (event) => {
@@ -108,6 +133,15 @@ $(document).on("click",".retweetButton", (event) => {
     })
 })
 
+$(document).on("click",".post", (event) => {
+    var element = $(event.target);
+    var postId = getPostIDFromElement(element);
+
+    if (postId !== undefined && !element.is("button")) {
+        window.location.href = '/posts/' + postId;
+    }
+});
+
 function getPostIDFromElement(element) {
     var isRoot = element.hasClass("post");
     var rootElement = isRoot == true ? element : element.closest(".post");
@@ -120,7 +154,7 @@ function getPostIDFromElement(element) {
     return postId;
 }
 
-function createPostHTML(postData) {
+function createPostHTML(postData, largeFont = false) {
     if (postData == null) return alert("Post Object is null");
     //return postData.content;
 
@@ -139,7 +173,8 @@ function createPostHTML(postData) {
     var timestamp = timeDifference(new Date(), new Date(postData.createdAt));
     var likeButtonActiveClass = postData.likes.includes(userLoggedIn._id) ? "active" : "";
     var retweetButtonActiveClass = postData.retweetUsers.includes(userLoggedIn._id) ? "active" : "";
-    
+    var largeFontClass = largeFont ? "largeFont"  : "";
+
     var retweetText = '';
     if (isRetweet) {
         retweetText =  `<span>
@@ -149,7 +184,7 @@ function createPostHTML(postData) {
     }
 
     var replyFlag = "";
-    if(postData.replyTo) {
+    if(postData.replyTo && postData.replyTo._id) {
         if (!postData.replyTo._id) {
             return alert("Reply to is not populated");
         } else if (!postData.replyTo.postedBy._id) {
@@ -161,7 +196,12 @@ function createPostHTML(postData) {
                     </div>`
     }
 
-    return `<div class="post" data-id='${postData._id}'>
+    var buttons = "";
+    if (postData.postedBy._id === userLoggedIn._id) {
+        buttons =  `<button data-id="${postData._id}" data-toggle="modal" data-target="#deletePostModal"><i class='fas fa-times'></i></button>`
+    }
+
+    return `<div class="post ${largeFontClass}" data-id='${postData._id}'>
                 <div class="postActionContainer">
                     ${retweetText}
                 </div>
@@ -174,6 +214,7 @@ function createPostHTML(postData) {
                             <a href='/profile/${postedBy.username}' class='displayName'>${displayName}</a>
                             <span class="username">@${postedBy.username}</span>
                             <span class="date">${timestamp}</span>
+                            ${buttons}
                         </div>
                         ${replyFlag}
                         <div class="postBody">
@@ -253,5 +294,28 @@ function outputPosts(results, container) {
 
     if (results.length == 0) {
         container.append("<span class='noResults'>Nothing to show</span>");
+    }
+}
+
+function outputPostsWithReplies(results, container) {
+    container.html("");
+
+    // Append the post this one is replying to, if it exists
+    if (results.replyTo !== undefined && results.replyTo._id !== undefined) {
+        var html = createPostHTML(results.replyTo);
+        container.append(html);
+    }
+    
+    // Append the main post
+    var mainPostHtml = createPostHTML(results.postData, true);
+    container.append(mainPostHtml);
+
+    // If in the future the structure includes 'replies', you can append them here:
+    if (Array.isArray(results.replies)) {
+        results.replies.forEach(result => {
+            //console.log(result);
+            var html = createPostHTML(result);
+            container.append(html);
+        });
     }
 }
