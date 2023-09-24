@@ -23,7 +23,7 @@ $("#submitPostButton, #submitReplyButton").click((event) => {
 
     var isModal = button.parents(".modal").length == 1;
 
-    var textbox = isModal ? $("#replyTextarea") : $("postTextarea");
+    var textbox = isModal ? $("#replyTextarea") : $("#postTextarea");
 
     var data = {
         content: textbox.val()
